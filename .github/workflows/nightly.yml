@@ -1,0 +1,45 @@
+name: Nightly Validation
+
+on:
+  schedule:
+    - cron: "0 2 * * *"  # 2 AM UTC
+  workflow_dispatch:
+
+jobs:
+  nightly-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: nightly-cluster
+
+      - name: Build images
+        run: |
+          docker build -t backend:nightly backend
+          docker build -t frontend:nightly frontend
+
+      - name: Load images into kind
+        run: |
+          kind load docker-image backend:nightly --name nightly-cluster
+          kind load docker-image frontend:nightly --name nightly-cluster
+
+      - name: Deploy to Kubernetes
+        run: kubectl apply -f k8s/
+
+      - name: Wait for pods
+        run: kubectl wait --for=condition=available deployment --all --timeout=180s
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run full Playwright regression
+        working-directory: frontend
+        run: npx playwright test
