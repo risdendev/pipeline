@@ -1,6 +1,9 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.venv/
 venv/
 
 # Node
@@ -11,8 +14,10 @@ dist/
 playwright-report/
 test-results/
 
-# Env
+# Environment
 .env
 
-# OS
+# OS / Editor
 .DS_Store
+.vscode/
+.idea/
