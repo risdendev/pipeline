@@ -1,0 +1,48 @@
+name: Release Candidate
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---------- Build Images ----------
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        run: docker build -t backend:${{ github.sha }} backend
+
+      - name: Build frontend image
+        run: docker build -t frontend:${{ github.sha }} frontend
+
+      # ---------- Kubernetes (kind) ----------
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: rc-cluster
+
+      - name: Load images into kind
+        run: |
+          kind load docker-image backend:${{ github.sha }} --name rc-cluster
+          kind load docker-image frontend:${{ github.sha }} --name rc-cluster
+
+      - name: Deploy to Kubernetes
+        run: kubectl apply -f k8s/
+
+      - name: Wait for pods
+        run: kubectl wait --for=condition=available deployment --all --timeout=120s
+
+      # ---------- Playwright ----------
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run Playwright E2E (RC)
+        working-directory: frontend
+        run: npx playwright test
