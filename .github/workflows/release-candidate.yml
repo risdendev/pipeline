@@ -16,10 +16,10 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build backend image
-        run: docker build -t backend:${{ github.sha }} backend
+        run: docker build -t backend:rc backend
 
       - name: Build frontend image
-        run: docker build -t frontend:${{ github.sha }} frontend
+        run: docker build -t frontend:rc frontend
 
       # ---------- Kubernetes (kind) ----------
       - name: Create kind cluster
@@ -29,11 +29,17 @@ jobs:
 
       - name: Load images into kind
         run: |
-          kind load docker-image backend:${{ github.sha }} --name rc-cluster
-          kind load docker-image frontend:${{ github.sha }} --name rc-cluster
+          kind load docker-image backend:rc --name rc-cluster
+          kind load docker-image frontend:rc --name rc-cluster
 
       - name: Deploy to Kubernetes
         run: kubectl apply -f k8s/
+
+      - name: Get pods
+        run: kubectl get pods -o wide
+
+      - name: Describe pods
+        run: kubectl describe pods
 
       - name: Wait for pods
         run: kubectl wait --for=condition=available deployment --all --timeout=120s
