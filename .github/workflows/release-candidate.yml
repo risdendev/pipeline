@@ -35,17 +35,17 @@ jobs:
       - name: Deploy to Kubernetes
         run: kubectl apply -f k8s/
 
-      - name: Get pods
-        run: kubectl get pods -o wide
-
-      - name: Describe pods
-        run: kubectl describe pods
-
       - name: Wait for backend rollout
         run: kubectl rollout status deployment/backend --timeout=120s
-      
+
       - name: Wait for frontend rollout
         run: kubectl rollout status deployment/frontend --timeout=120s
+
+      # 🔑 THIS IS THE MISSING PIECE
+      - name: Port-forward frontend service
+        run: |
+          kubectl port-forward svc/frontend 5173:80 &
+          sleep 10
 
       # ---------- Playwright ----------
       - name: Install frontend deps
